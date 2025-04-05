@@ -542,7 +542,7 @@ export default function Governance() {
                                       </div>
                                     )}
                                     
-                                    {proposal.status !== "voted" && (
+                                    {!votedProposals.includes(proposal.id) && (
                                       <Button 
                                         variant="ghost" 
                                         className="px-3"

@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ],
+  "public": false,
+  "cleanUrls": true,
+  "trailingSlash": false
+} 

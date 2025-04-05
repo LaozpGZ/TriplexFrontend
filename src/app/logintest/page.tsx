@@ -99,7 +99,7 @@ export default function Home() {
         />
       )}
       {connected && isMainnet(connected, network?.name) && (
-        <Alert variant="warning">
+        <Alert variant="default" className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20 text-yellow-800 dark:text-yellow-300">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Warning</AlertTitle>
           <AlertDescription>

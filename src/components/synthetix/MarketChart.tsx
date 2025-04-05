@@ -1,4 +1,8 @@
 import { useState, useEffect } from 'react'
+import { Card } from '@/components/ui/card'
+
+// 颜色常量
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
 interface MarketChartProps {
   type: 'line' | 'bar' | 'pie'
@@ -103,7 +107,7 @@ export function MarketChart({ type = 'line', height = 300, data, title, timeRang
         
         {/* 轴标签 */}
         <div className="absolute bottom-0 left-0 right-0 flex justify-between px-2 text-xs text-muted-foreground">
-          {labels.filter((_, i) => i % Math.max(1, Math.floor(labels.length / 5)) === 0).map((label, i) => (
+          {labels.filter((_: string, i: number) => i % Math.max(1, Math.floor(labels.length / 5)) === 0).map((label: string, i: number) => (
             <div key={i}>{label}</div>
           ))}
         </div>
@@ -202,32 +206,30 @@ export function MarketChart({ type = 'line', height = 300, data, title, timeRang
   const renderPieChart = () => {
     if (!chartData) return null
     
-    const { values, labels } = chartData
-    const total = values.reduce((sum: number, value: number) => sum + value, 0)
-    
-    // 计算饼图各部分
-    let cumulativePercentage = 0
-    const slices = values.map((value: number, index: number) => {
-      const percentage = (value / total) * 100
-      const startAngle = cumulativePercentage * 3.6 // 转换为角度
-      cumulativePercentage += percentage
-      const endAngle = cumulativePercentage * 3.6
+    const total = chartData.reduce((sum: number, item: any) => sum + item.value, 0)
+    const slices = chartData.map((item: any, index: number) => {
+      const percentage = (item.value / total) * 100
+      const startAngle = index === 0 
+        ? 0 
+        : chartData.slice(0, index).reduce((sum: number, prev: any) => sum + (prev.value / total) * 360, 0)
+      const endAngle = startAngle + (item.value / total) * 360
       
       // 计算SVG路径
-      const startX = 50 + 40 * Math.cos((startAngle - 90) * (Math.PI / 180))
-      const startY = 50 + 40 * Math.sin((startAngle - 90) * (Math.PI / 180))
-      const endX = 50 + 40 * Math.cos((endAngle - 90) * (Math.PI / 180))
-      const endY = 50 + 40 * Math.sin((endAngle - 90) * (Math.PI / 180))
+      const startRad = (startAngle - 90) * Math.PI / 180
+      const endRad = (endAngle - 90) * Math.PI / 180
+      const x1 = 50 + 40 * Math.cos(startRad)
+      const y1 = 50 + 40 * Math.sin(startRad)
+      const x2 = 50 + 40 * Math.cos(endRad)
+      const y2 = 50 + 40 * Math.sin(endRad)
       
-      const largeArcFlag = percentage > 50 ? 1 : 0
+      const largeArc = endAngle - startAngle > 180 ? 1 : 0
       
-      // 饼图颜色
-      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+      const path = `M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`
       
       return {
-        path: `M 50 50 L ${startX} ${startY} A 40 40 0 ${largeArcFlag} 1 ${endX} ${endY} Z`,
-        color: colors[index % colors.length],
-        label: labels[index],
+        path,
+        color: item.color || COLORS[index % COLORS.length],
+        label: item.name,
         percentage
       }
     })
@@ -236,7 +238,7 @@ export function MarketChart({ type = 'line', height = 300, data, title, timeRang
       <div className="relative h-full w-full">
         {/* 饼图 */}
         <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100">
-          {slices.map((slice, index) => (
+          {slices.map((slice: any, index: number) => (
             <path
               key={index}
               d={slice.path}
@@ -249,7 +251,7 @@ export function MarketChart({ type = 'line', height = 300, data, title, timeRang
         
         {/* 图例 */}
         <div className="absolute inset-y-0 right-0 w-1/3 flex flex-col justify-center space-y-2 text-xs">
-          {slices.map((slice, index) => (
+          {slices.map((slice: any, index: number) => (
             <div key={index} className="flex items-center">
               <div
                 className="h-3 w-3 rounded-sm"

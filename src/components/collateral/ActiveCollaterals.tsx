@@ -404,7 +404,6 @@ export default function ActiveCollaterals({ searchQuery = '', activeFilters = []
           onClose={() => setIsAddModalOpen(false)}
           asset={{
             symbol: selectedCollateral.asset.symbol,
-            name: selectedCollateral.asset.name,
             balance: getWalletBalance(selectedCollateral.asset.id),
             currentRatio: selectedCollateral.ratio,
             liquidationThreshold: selectedCollateral.asset.liquidationThreshold
@@ -420,7 +419,6 @@ export default function ActiveCollaterals({ searchQuery = '', activeFilters = []
           onClose={() => setIsWithdrawModalOpen(false)}
           asset={{
             symbol: selectedCollateral.asset.symbol,
-            name: selectedCollateral.asset.name,
             availableToWithdraw: getWithdrawableAmount(selectedCollateral),
             currentRatio: selectedCollateral.ratio,
             liquidationThreshold: selectedCollateral.asset.liquidationThreshold
