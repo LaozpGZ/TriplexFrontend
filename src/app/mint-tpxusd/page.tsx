@@ -79,6 +79,7 @@ export default function MintTpxUsdPage() {
   const [errors, setErrors] = useState<{ amount?: string; collateral?: string; ratio?: string }>({});
   const [txHash, setTxHash] = useState<string>("");
   const [priceChange, setPriceChange] = useState<number>(0);
+  const [isCalculatingFromCollateral, setIsCalculatingFromCollateral] = useState<boolean>(false);
   
   // 模拟数据 - 抵押品列表
   const collaterals: Collateral[] = [
@@ -148,14 +149,40 @@ export default function MintTpxUsdPage() {
   
   // 计算需要的抵押品数量
   useEffect(() => {
-    if (selectedCollateral && amount && !isNaN(parseFloat(amount))) {
-      const amountValue = parseFloat(amount);
-      const requiredCollateral = (amountValue * collateralRatio / 100) / selectedCollateral.price;
-      setCollateralAmount(requiredCollateral.toFixed(selectedCollateral.isStablecoin ? 2 : 6));
+    if (!selectedCollateral) return;
+
+    if (!isCalculatingFromCollateral) {
+      // 根据铸造金额计算抵押品数量
+      if (amount && !isNaN(parseFloat(amount))) {
+        const amountValue = parseFloat(amount);
+        const requiredCollateral = (amountValue * collateralRatio / 100) / selectedCollateral.price;
+        setCollateralAmount(requiredCollateral.toFixed(selectedCollateral.isStablecoin ? 2 : 6));
+      } else {
+        setCollateralAmount("");
+      }
     } else {
-      setCollateralAmount("");
+      // 根据抵押品数量计算铸造金额
+      if (collateralAmount && !isNaN(parseFloat(collateralAmount))) {
+        const collateralValue = parseFloat(collateralAmount);
+        const possibleMintAmount = (collateralValue * selectedCollateral.price) / (collateralRatio / 100);
+        setAmount(possibleMintAmount.toFixed(2));
+      } else {
+        setAmount("");
+      }
     }
-  }, [amount, collateralRatio, selectedCollateral]);
+  }, [amount, collateralRatio, selectedCollateral, collateralAmount, isCalculatingFromCollateral]);
+  
+  // 处理抵押品数量输入变化
+  const handleCollateralAmountChange = (value: string) => {
+    setIsCalculatingFromCollateral(true);
+    setCollateralAmount(value);
+  };
+  
+  // 处理铸造数量输入变化
+  const handleAmountChange = (value: string) => {
+    setIsCalculatingFromCollateral(false);
+    setAmount(value);
+  };
   
   // 验证表单
   const validateForm = (): boolean => {
@@ -269,7 +296,7 @@ export default function MintTpxUsdPage() {
                             id="amount"
                             placeholder="输入TpxUSD数量"
                             value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
+                            onChange={(e) => handleAmountChange(e.target.value)}
                             className="pr-20"
                           />
                           <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
@@ -341,8 +368,9 @@ export default function MintTpxUsdPage() {
                           <Input
                             id="collateral-amount"
                             value={collateralAmount}
-                            readOnly
-                            className="pr-20 bg-muted"
+                            onChange={(e) => handleCollateralAmountChange(e.target.value)}
+                            placeholder={`输入${selectedCollateral?.symbol || ''}数量`}
+                            className="pr-20"
                           />
                           <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                             <span className="text-muted-foreground text-sm">

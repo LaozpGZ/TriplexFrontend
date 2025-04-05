@@ -1,4 +1,19 @@
 import { useState, useEffect } from 'react'
+import { 
+  LineChart, 
+  Line, 
+  BarChart, 
+  Bar, 
+  PieChart, 
+  Pie, 
+  Cell, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  Legend
+} from 'recharts'
 import { Card } from '@/components/ui/card'
 
 // 颜色常量
@@ -12,8 +27,13 @@ interface MarketChartProps {
   timeRange?: string
 }
 
+interface ChartDataItem {
+  name: string
+  value: number
+}
+
 export function MarketChart({ type = 'line', height = 300, data, title, timeRange = '24h' }: MarketChartProps) {
-  const [chartData, setChartData] = useState<any>(null)
+  const [chartData, setChartData] = useState<ChartDataItem[] | null>(null)
   
   useEffect(() => {
     // 如果有提供数据，使用提供的数据；否则生成模拟数据
@@ -28,12 +48,12 @@ export function MarketChart({ type = 'line', height = 300, data, title, timeRang
   
   // 生成模拟数据
   const generateMockData = (chartType: string, range: string) => {
-    let mockData: any = {}
+    let mockData: ChartDataItem[] = []
     
     if (chartType === 'line') {
       // 生成折线图数据
       const dataPoints = range === '24h' ? 24 : range === '7d' ? 7 : range === '30d' ? 30 : 60
-      const values = []
+      const values: number[] = []
       let baseValue = 14000000
       
       for (let i = 0; i < dataPoints; i++) {
@@ -42,39 +62,38 @@ export function MarketChart({ type = 'line', height = 300, data, title, timeRang
         values.push(baseValue)
       }
       
-      mockData = {
-        values,
-        labels: Array.from({ length: dataPoints }, (_, i) => {
-          if (range === '24h') return `${i}:00`
-          if (range === '7d') return `Day ${i+1}`
-          if (range === '30d') return `Day ${i+1}`
-          return `Day ${i+1}`
-        })
-      }
+      // 为Recharts转换数据格式
+      mockData = Array.from({ length: dataPoints }, (_, i) => ({
+        name: range === '24h' ? `${i}:00` : 
+              range === '7d' ? `Day ${i+1}` : 
+              range === '30d' ? `Day ${i+1}` : `Day ${i+1}`,
+        value: values[i]
+      }))
     } else if (chartType === 'bar') {
       // 生成柱状图数据
       const dataPoints = range === '24h' ? 12 : range === '7d' ? 7 : range === '30d' ? 10 : 12
-      const values = []
+      const values: number[] = []
       
       for (let i = 0; i < dataPoints; i++) {
         values.push(Math.floor(Math.random() * 900000) + 100000)
       }
       
-      mockData = {
-        values,
-        labels: Array.from({ length: dataPoints }, (_, i) => {
-          if (range === '24h') return `${i*2}:00`
-          if (range === '7d') return `Day ${i+1}`
-          if (range === '30d') return `Day ${i*3+1}`
-          return `Day ${i+1}`
-        })
-      }
+      // 为Recharts转换数据格式
+      mockData = Array.from({ length: dataPoints }, (_, i) => ({
+        name: range === '24h' ? `${i*2}:00` : 
+              range === '7d' ? `Day ${i+1}` : 
+              range === '30d' ? `Day ${i*3+1}` : `Day ${i+1}`,
+        value: values[i]
+      }))
     } else if (chartType === 'pie') {
-      // 生成饼图数据
-      mockData = {
-        values: [45, 25, 15, 10, 5],
-        labels: ['tpxBTC', 'tpxETH', 'tpxGOLD', 'tpxSOL', '其他']
-      }
+      // 生成饼图数据，直接使用Recharts支持的格式
+      mockData = [
+        { name: 'tpxBTC', value: 45 },
+        { name: 'tpxETH', value: 25 },
+        { name: 'tpxGOLD', value: 15 },
+        { name: 'tpxSOL', value: 10 },
+        { name: '其他', value: 5 }
+      ]
     }
     
     setChartData(mockData)
@@ -84,78 +103,54 @@ export function MarketChart({ type = 'line', height = 300, data, title, timeRang
   const renderLineChart = () => {
     if (!chartData) return null
     
-    const { values, labels } = chartData
-    const maxValue = Math.max(...values) * 1.05
-    const minValue = Math.min(...values) * 0.95
-    const range = maxValue - minValue
+    // 格式化数字显示
+    const formatYAxis = (value: number) => {
+      return `$${(value / 1000000).toFixed(1)}M`
+    }
     
-    // 生成路径点
-    const points = values.map((value: number, index: number) => {
-      const x = (index / (values.length - 1)) * 100
-      const y = 100 - ((value - minValue) / range) * 100
-      return `${x},${y}`
-    }).join(' ')
+    // 格式化tooltip
+    const formatTooltip = (value: number) => {
+      return [`$${value.toLocaleString()}`]
+    }
     
     return (
-      <div className="relative h-full w-full">
-        {/* 背景网格 */}
-        <div className="absolute inset-0 grid grid-cols-4 grid-rows-4">
-          {Array.from({ length: 16 }).map((_, i) => (
-            <div key={i} className="border-t border-l border-gray-200 dark:border-gray-800"></div>
-          ))}
-        </div>
-        
-        {/* 轴标签 */}
-        <div className="absolute bottom-0 left-0 right-0 flex justify-between px-2 text-xs text-muted-foreground">
-          {labels.filter((_: string, i: number) => i % Math.max(1, Math.floor(labels.length / 5)) === 0).map((label: string, i: number) => (
-            <div key={i}>{label}</div>
-          ))}
-        </div>
-        
-        {/* 价格标签 */}
-        <div className="absolute right-2 top-0 bottom-6 flex flex-col justify-between text-xs text-muted-foreground">
-          <div>${Math.floor(maxValue).toLocaleString()}</div>
-          <div>${Math.floor(minValue + range * 0.75).toLocaleString()}</div>
-          <div>${Math.floor(minValue + range * 0.5).toLocaleString()}</div>
-          <div>${Math.floor(minValue + range * 0.25).toLocaleString()}</div>
-          <div>${Math.floor(minValue).toLocaleString()}</div>
-        </div>
-        
-        {/* 折线图 */}
-        <svg className="absolute inset-0 h-full w-full overflow-visible p-2" preserveAspectRatio="none" viewBox="0 0 100 100">
-          {/* 填充区域 */}
-          <path
-            d={`M0,100 ${points} 100,100 Z`}
-            fill="rgba(59, 130, 246, 0.1)"
-            stroke="none"
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={chartData}
+          margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+          <XAxis 
+            dataKey="name" 
+            tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.5)' }} 
+            axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
           />
-          {/* 线条 */}
-          <polyline
-            points={points}
-            fill="none"
-            stroke="rgb(59, 130, 246)"
-            strokeWidth="1"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          <YAxis 
+            tickFormatter={formatYAxis}
+            tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.5)' }}
+            axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+            tickLine={{ stroke: 'rgba(255,255,255,0.2)' }}
           />
-          {/* 数据点 */}
-          {values.map((value: number, index: number) => {
-            const x = (index / (values.length - 1)) * 100
-            const y = 100 - ((value - minValue) / range) * 100
-            return (
-              <circle
-                key={index}
-                cx={x}
-                cy={y}
-                r="1"
-                fill="rgb(59, 130, 246)"
-                stroke="white"
-                strokeWidth="0.5"
-              />
-            )
-          })}
-        </svg>
-      </div>
+          <Tooltip 
+            formatter={formatTooltip}
+            contentStyle={{ 
+              backgroundColor: '#1E293B', 
+              borderColor: 'rgba(255,255,255,0.2)',
+              borderRadius: '6px',
+              color: 'white'
+            }}
+            labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
+          />
+          <Line 
+            type="monotone" 
+            dataKey="value" 
+            stroke="#3b82f6" 
+            activeDot={{ r: 6 }}
+            strokeWidth={2} 
+            dot={{ stroke: '#3b82f6', strokeWidth: 2, r: 3 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
     )
   }
   
@@ -163,42 +158,47 @@ export function MarketChart({ type = 'line', height = 300, data, title, timeRang
   const renderBarChart = () => {
     if (!chartData) return null
     
-    const { values, labels } = chartData
-    const maxValue = Math.max(...values) * 1.1
+    // 格式化数字显示
+    const formatYAxis = (value: number) => {
+      return value >= 1000000 
+        ? `$${(value / 1000000).toFixed(1)}M` 
+        : `$${(value / 1000).toFixed(0)}K`
+    }
     
     return (
-      <div className="relative h-full w-full">
-        {/* 背景网格 */}
-        <div className="absolute inset-0 grid grid-cols-1 grid-rows-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="border-t border-gray-200 dark:border-gray-800"></div>
-          ))}
-        </div>
-        
-        {/* 柱状图 */}
-        <div className="absolute inset-0 flex h-full items-end justify-around px-2 pb-6">
-          {values.map((value: number, index: number) => (
-            <div key={index} className="flex flex-col items-center">
-              <div
-                className="w-8 rounded-t-sm bg-primary transition-all duration-500"
-                style={{ height: `${(value / maxValue) * 100}%` }}
-              ></div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                {labels[index]}
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {/* 价格标签 */}
-        <div className="absolute right-2 top-0 bottom-6 flex flex-col justify-between text-xs text-muted-foreground">
-          <div>${Math.floor(maxValue).toLocaleString()}</div>
-          <div>${Math.floor(maxValue * 0.75).toLocaleString()}</div>
-          <div>${Math.floor(maxValue * 0.5).toLocaleString()}</div>
-          <div>${Math.floor(maxValue * 0.25).toLocaleString()}</div>
-          <div>$0</div>
-        </div>
-      </div>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={chartData}
+          margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+          <XAxis 
+            dataKey="name" 
+            tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.5)' }}
+            axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+          />
+          <YAxis 
+            tickFormatter={formatYAxis}
+            tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.5)' }}
+            axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+          />
+          <Tooltip 
+            formatter={(value: number) => [`$${value.toLocaleString()}`]}
+            contentStyle={{ 
+              backgroundColor: '#1E293B', 
+              borderColor: 'rgba(255,255,255,0.2)',
+              borderRadius: '6px',
+              color: 'white'
+            }}
+            labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
+          />
+          <Bar 
+            dataKey="value" 
+            fill="#3b82f6" 
+            radius={[4, 4, 0, 0]}
+          />
+        </BarChart>
+      </ResponsiveContainer>
     )
   }
   
@@ -206,71 +206,48 @@ export function MarketChart({ type = 'line', height = 300, data, title, timeRang
   const renderPieChart = () => {
     if (!chartData) return null
     
-    const total = chartData.reduce((sum: number, item: any) => sum + item.value, 0)
-    const slices = chartData.map((item: any, index: number) => {
-      const percentage = (item.value / total) * 100
-      const startAngle = index === 0 
-        ? 0 
-        : chartData.slice(0, index).reduce((sum: number, prev: any) => sum + (prev.value / total) * 360, 0)
-      const endAngle = startAngle + (item.value / total) * 360
-      
-      // 计算SVG路径
-      const startRad = (startAngle - 90) * Math.PI / 180
-      const endRad = (endAngle - 90) * Math.PI / 180
-      const x1 = 50 + 40 * Math.cos(startRad)
-      const y1 = 50 + 40 * Math.sin(startRad)
-      const x2 = 50 + 40 * Math.cos(endRad)
-      const y2 = 50 + 40 * Math.sin(endRad)
-      
-      const largeArc = endAngle - startAngle > 180 ? 1 : 0
-      
-      const path = `M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`
-      
-      return {
-        path,
-        color: item.color || COLORS[index % COLORS.length],
-        label: item.name,
-        percentage
-      }
-    })
-    
     return (
-      <div className="relative h-full w-full">
-        {/* 饼图 */}
-        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100">
-          {slices.map((slice: any, index: number) => (
-            <path
-              key={index}
-              d={slice.path}
-              fill={slice.color}
-              stroke="white"
-              strokeWidth="1"
-            />
-          ))}
-        </svg>
-        
-        {/* 图例 */}
-        <div className="absolute inset-y-0 right-0 w-1/3 flex flex-col justify-center space-y-2 text-xs">
-          {slices.map((slice: any, index: number) => (
-            <div key={index} className="flex items-center">
-              <div
-                className="h-3 w-3 rounded-sm"
-                style={{ backgroundColor: slice.color }}
-              ></div>
-              <span className="ml-2">
-                {slice.label} ({slice.percentage.toFixed(1)}%)
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={chartData}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+            outerRadius={80}
+            fill="#8884d8"
+            dataKey="value"
+          >
+            {chartData.map((entry: any, index: number) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip 
+            formatter={(value: number) => [`${value}`, '数量']}
+            contentStyle={{ 
+              backgroundColor: '#1E293B', 
+              borderColor: 'rgba(255,255,255,0.2)',
+              borderRadius: '6px',
+              color: 'white'
+            }}
+          />
+          <Legend 
+            verticalAlign="middle" 
+            align="right" 
+            layout="vertical"
+            iconType="circle"
+            iconSize={10}
+          />
+        </PieChart>
+      </ResponsiveContainer>
     )
   }
   
   return (
     <div className="relative h-full w-full" style={{ height: `${height}px` }}>
       {title && (
-        <div className="absolute left-0 top-0 text-sm text-muted-foreground p-2">
+        <div className="absolute left-0 top-0 text-sm text-muted-foreground p-2 z-10">
           {title}
         </div>
       )}
